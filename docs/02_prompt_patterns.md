@@ -12,7 +12,7 @@ Do not suggest changes yet. Identify the minimum tests I should run before editi
 ## 2. Failing test triage
 
 ```text
-Here is a failing pytest output and the relevant code.
+Here is failing test output and the relevant code.
 Give me 3 plausible root causes, ranked by likelihood.
 For each, tell me how to verify it before changing code.
 ```

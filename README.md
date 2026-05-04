@@ -1,7 +1,7 @@
 # AI Code Workshop: Broken Orders API
 
-This is a deliberately broken FastAPI project for a short workshop on using AI
-to understand, test, debug, and refactor code.
+This is a deliberately broken Node.js API for a short workshop on using AI to
+understand, test, debug, and refactor code.
 
 The goal is to finish the core exercises in a half-day session. Work in small
 steps: run one test file, ask AI for help, review the answer, change code, and
@@ -9,12 +9,12 @@ run the test again.
 
 ## What You Need
 
-- Python 3.10 or newer
+- Node.js 20 or newer
 - Git
 - A code editor
 - An AI assistant
 
-This repo was tested with Python 3.13.
+This repo was tested with Node.js 24.
 
 ## Step 1: Get the Code
 
@@ -23,59 +23,42 @@ git clone https://github.com/kalinbas/ai-code-workshop-buggy-api.git
 cd ai-code-workshop-buggy-api
 ```
 
-## Step 2: Create a Virtual Environment
-
-On macOS or Linux:
+## Step 2: Check Node
 
 ```bash
-PYTHON=python3.13  # change this to python3.12, python3.11, or python3.10 if needed
-$PYTHON -m venv .venv
-source .venv/bin/activate
+node --version
+npm run check-setup
 ```
 
-On Windows PowerShell:
+No virtual environment is needed. This project uses only built-in Node.js
+modules, so there are no packages to install.
 
-```powershell
-py -3.13 -m venv .venv
-.\.venv\Scripts\Activate.ps1
-```
-
-Keep the virtual environment activated while you work.
-
-## Step 3: Install Dependencies
+## Step 3: Check the Starting Point
 
 ```bash
-python -m pip install -e ".[dev]"
+npm test
 ```
 
-## Step 4: Check the Starting Point
+Several tests should fail. That is expected. The failures are the workshop.
 
-```bash
-pytest --collect-only
-pytest
-```
-
-The tests should collect successfully, then several tests should fail. That is
-expected. The failures are the workshop.
-
-## Step 5: Do the Three Exercises
+## Step 4: Do the Three Exercises
 
 Run one exercise at a time:
 
 ```bash
-pytest tests/test_01_validation.py
-pytest tests/test_02_pricing.py
-pytest tests/test_03_security.py
+npm run test:validation
+npm run test:pricing
+npm run test:security
 ```
 
 Use `docs/01_task_cards.md` for the instructions for each exercise.
 
-## Step 6: Use AI in Small Steps
+## Step 5: Use AI in Small Steps
 
 Start with this prompt:
 
 ```text
-You are helping me work on an unfamiliar FastAPI codebase.
+You are helping me work on an unfamiliar Node.js API.
 First, inspect the files I provide and summarize:
 1. the main responsibilities,
 2. likely risks or design smells,
@@ -97,7 +80,7 @@ More prompt examples are in `docs/02_prompt_patterns.md`.
 ## Optional: Run the API
 
 ```bash
-uvicorn app.main:app --reload
+npm start
 ```
 
 Open:
@@ -114,22 +97,22 @@ Authorization: Bearer premium-token-1
 Authorization: Bearer admin-token
 ```
 
-## Useful Make Commands
+## Useful Commands
 
 ```bash
-make check-setup
-make test
-make test-baseline
-make test-extension
-make test-expert
-make run
+npm run check-setup
+npm test
+npm run test:baseline
+npm run test:extension
+npm run test:expert
+npm run test:validation
+npm run test:pricing
+npm run test:security
+npm run smoke
+npm run demo
 ```
 
-If `make check-setup` uses the wrong Python, run:
-
-```bash
-make PYTHON=python3.13 check-setup
-```
+The same commands are also available through `make` if you prefer it.
 
 ## Extra Workshop Files
 
@@ -138,4 +121,4 @@ make PYTHON=python3.13 check-setup
 - `docs/prompt_journal_template.md`: worksheet for tracking prompts
 - `docs/ai_patch_review_lab.md`: checklist for reviewing AI output
 - `docs/workshop_rubric.md`: debrief rubric
-- `examples/refactor_prompt_demo.py`: small presentation demo
+- `examples/refactor-prompt-demo.js`: small presentation demo

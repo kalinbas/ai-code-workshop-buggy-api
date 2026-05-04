@@ -13,7 +13,7 @@ half-day workshop.
 Suggested first prompt:
 
 ```text
-You are helping me work on an unfamiliar FastAPI codebase.
+You are helping me work on an unfamiliar Node.js API.
 First, inspect the files I give you and summarize:
 1. the main responsibilities,
 2. likely risks or design smells,
@@ -28,7 +28,7 @@ Do not rewrite code yet.
 Run:
 
 ```bash
-pytest tests/test_01_validation.py
+npm run test:validation
 ```
 
 ## Goal
@@ -45,7 +45,7 @@ Make invalid orders fail instead of being silently accepted.
 
 ## Discussion
 
-- Should validation live in Pydantic models, service code, or both?
+- Should validation live at the HTTP boundary, in pricing, or both?
 - How did your prompt change after seeing the first AI answer?
 
 ---
@@ -55,7 +55,7 @@ Make invalid orders fail instead of being silently accepted.
 Run:
 
 ```bash
-pytest tests/test_02_pricing.py
+npm run test:pricing
 ```
 
 ## Goal
@@ -81,7 +81,7 @@ Fix the most visible pricing rules without rewriting the whole module.
 Run:
 
 ```bash
-pytest tests/test_03_security.py
+npm run test:security
 ```
 
 ## Goal

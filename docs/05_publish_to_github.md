@@ -8,10 +8,10 @@ facilitator notes or private answer keys.
 ```bash
 git status --short
 rg "D[o] Not Give|Expected pricin[g]|B[U]G" .
-pytest --collect-only
-pytest -m baseline
-pytest -m extension
-pytest -m expert
+npm test
+npm run test:baseline
+npm run test:extension
+npm run test:expert
 ```
 
 The tests should collect successfully. Some tests should fail because the repo

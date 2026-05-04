@@ -1,33 +1,37 @@
-PYTHON ?= python3
-
-.PHONY: check-setup install test test-baseline test-extension test-expert test-validation test-pricing test-security run
+.PHONY: check-setup install test test-baseline test-extension test-expert test-validation test-pricing test-security run smoke demo
 
 check-setup:
-	$(PYTHON) -c "import sys; print(sys.version.split()[0]); raise SystemExit(0 if sys.version_info >= (3, 10) else 'Python 3.10+ is required')"
+	npm run check-setup
 
 install:
-	$(PYTHON) -m pip install -e ".[dev]"
+	npm install
 
 test:
-	pytest
+	npm test
 
 test-baseline:
-	pytest -m baseline
+	npm run test:baseline
 
 test-extension:
-	pytest -m extension
+	npm run test:extension
 
 test-expert:
-	pytest -m expert
+	npm run test:expert
 
 test-validation:
-	pytest tests/test_01_validation.py
+	npm run test:validation
 
 test-pricing:
-	pytest tests/test_02_pricing.py
+	npm run test:pricing
 
 test-security:
-	pytest tests/test_03_security.py
+	npm run test:security
 
 run:
-	uvicorn app.main:app --reload
+	npm start
+
+smoke:
+	npm run smoke
+
+demo:
+	npm run demo

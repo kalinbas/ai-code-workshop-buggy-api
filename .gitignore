@@ -1,17 +1,11 @@
-# Python
-__pycache__/
-*.py[cod]
-*.egg-info/
-.pytest_cache/
-.coverage
-htmlcov/
-build/
-dist/
+# Node.js
+node_modules/
+npm-debug.log*
 
-# Virtual environments and local config
-.venv/
-venv/
+# Local config and generated files
 .env
+coverage/
+dist/
 
 # Operating system files
 .DS_Store

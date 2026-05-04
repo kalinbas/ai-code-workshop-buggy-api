@@ -6,8 +6,7 @@ groups of three plus one facilitator-paired participant.
 ## Pre-work
 
 Send participants the setup instructions before the workshop. Ask them to run
-`pytest --collect-only` and confirm that the suite starts with intentional
-failures.
+`npm test` and confirm that the suite starts with intentional failures.
 
 ## 09:00-09:20 — Kickoff
 
@@ -15,25 +14,25 @@ Do:
 
 1. explain that the repo is intentionally broken
 2. show one bad prompt and one improved prompt
-3. explain the baseline, extension, and expert markers
+3. explain the baseline, extension, and expert scripts
 
-Use `examples/refactor_prompt_demo.py` if you want a quick live prompt demo.
+Use `examples/refactor-prompt-demo.js` if you want a quick live prompt demo.
 
 ## 09:20-10:10 — Exercise 1: validation
 
-Run `pytest tests/test_01_validation.py`.
+Run `npm run test:validation`.
 
 Facilitator focus:
 
-- ask AI to explain the request models before editing
-- compare Pydantic validation vs. explicit service validation
+- ask AI to explain the request flow before editing
+- compare HTTP-boundary validation vs. domain validation
 - keep the fix small
 
 ## 10:10-10:20 — Break
 
 ## 10:20-11:10 — Exercise 2: pricing
 
-Run `pytest tests/test_02_pricing.py`.
+Run `npm run test:pricing`.
 
 Facilitator focus:
 
@@ -43,7 +42,7 @@ Facilitator focus:
 
 ## 11:10-12:00 — Exercise 3: security
 
-Run `pytest tests/test_03_security.py`.
+Run `npm run test:security`.
 
 Facilitator focus:
 
