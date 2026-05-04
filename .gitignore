@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+build/
+dist/
+
+# Virtual environments and local config
+.venv/
+venv/
+.env
+
+# Operating system files
+.DS_Store
+
+# Workshop-private material that should never be published
+docs/private/
+.workshop-private/
