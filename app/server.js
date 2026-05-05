@@ -1,7 +1,7 @@
 import { createServer as createHttpServer } from "node:http";
 import { fileURLToPath } from "node:url";
 import { getCurrentCustomer, requireAdmin } from "./auth.js";
-import { auditLog, orders } from "./data.js";
+import { auditLog, catalog, orders } from "./data.js";
 import { HttpError } from "./http-error.js";
 import { calculateOrderTotal } from "./pricing.js";
 import { revenueByCustomer } from "./reports.js";
@@ -11,7 +11,16 @@ async function readJson(request) {
   for await (const chunk of request) {
     body += chunk;
   }
-  return body ? JSON.parse(body) : {};
+
+  if (!body) {
+    return {};
+  }
+
+  try {
+    return JSON.parse(body);
+  } catch {
+    throw new HttpError(400, "Invalid JSON body");
+  }
 }
 
 function sendJson(response, statusCode, body) {
@@ -44,7 +53,43 @@ async function handleRequest(request, response) {
 
   if (request.method === "POST" && url.pathname === "/orders") {
     const payload = await readJson(request);
-    const items = (payload.items ?? []).map((item) => ({
+
+    if (!Array.isArray(payload.items) || payload.items.length === 0) {
+      throw new HttpError(400, "Order must include at least one item");
+    }
+
+    for (const item of payload.items) {
+      if (!item || typeof item !== "object") {
+        throw new HttpError(400, "Each item must be an object");
+      }
+
+      if (typeof item.sku !== "string" || item.sku.trim() === "") {
+        throw new HttpError(400, "SKU is required");
+      }
+
+      if (!catalog[item.sku]) {
+        throw new HttpError(400, `Unknown SKU: ${item.sku}`);
+      }
+
+      const quantity = item.quantity === undefined ? 1 : item.quantity;
+      if (typeof quantity !== "number") {
+        throw new HttpError(400, "Quantity must be a number");
+      }
+
+      if (!Number.isInteger(quantity)) {
+        throw new HttpError(400, "Quantity must be an integer");
+      }
+
+      if (quantity <= 0) {
+        throw new HttpError(400, "Quantity must be greater than zero");
+      }
+
+      if (quantity > 1000) {
+        throw new HttpError(400, "Quantity is too large");
+      }
+    }
+
+    const items = payload.items.map((item) => ({
       sku: item.sku,
       quantity: item.quantity ?? 1,
     }));
@@ -71,7 +116,10 @@ async function handleRequest(request, response) {
     const order = orders.get(orderMatch[1]);
     if (!order) throw new HttpError(404, "Order not found");
 
-    // Access policy is part of the security review exercise.
+    if (customer.role !== "admin" && order.customerId !== customer.id) {
+      throw new HttpError(403, "Order access denied");
+    }
+
     return sendJson(response, 200, order);
   }
 
@@ -80,21 +128,38 @@ async function handleRequest(request, response) {
     const order = orders.get(refundMatch[1]);
     if (!order) throw new HttpError(404, "Order not found");
 
-    // Authorization is part of the refund exercise.
-    // requireAdmin(customer);
+    requireAdmin(customer);
 
     const payload = await readJson(request);
-    const amount = payload.amount || order.pricing.total;
-    order.status = "refunded";
+    const amount = payload.amount ?? order.pricing.total;
+    if (typeof amount !== "number") {
+      throw new HttpError(400, "Refund amount must be a number");
+    }
+
+    if (amount <= 0) {
+      throw new HttpError(400, "Refund amount must be greater than zero");
+    }
+
+    const refundedAmount = order.refundedAmount ?? 0;
+    if (refundedAmount + amount > order.pricing.total) {
+      throw new HttpError(400, "Refund amount cannot exceed remaining order total");
+    }
+
+    order.refundedAmount = refundedAmount + amount;
+    order.status = order.refundedAmount === order.pricing.total ? "refunded" : "partially_refunded";
     order.refundAmount = amount;
     order.refundReason = payload.reason ?? null;
     auditLog.push({ event: "order_refunded", orderId: order.id, customerId: customer.id, amount });
-    return sendJson(response, 200, { order_id: order.id, status: "refunded", amount });
+    return sendJson(response, 200, {
+      order_id: order.id,
+      status: order.status,
+      amount,
+      refunded_amount: order.refundedAmount,
+    });
   }
 
   if (request.method === "GET" && url.pathname === "/reports/revenue") {
-    // Report access is part of the security review exercise.
-    // requireAdmin(customer);
+    requireAdmin(customer);
     return sendJson(response, 200, revenueByCustomer(orders));
   }
 
