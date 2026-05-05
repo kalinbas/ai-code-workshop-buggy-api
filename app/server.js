@@ -1,7 +1,7 @@
 import { createServer as createHttpServer } from "node:http";
 import { fileURLToPath } from "node:url";
 import { getCurrentCustomer, requireAdmin } from "./auth.js";
-import { auditLog, orders } from "./data.js";
+import { auditLog, catalog, orders } from "./data.js";
 import { HttpError } from "./http-error.js";
 import { calculateOrderTotal } from "./pricing.js";
 import { revenueByCustomer } from "./reports.js";
@@ -29,6 +29,30 @@ function sendDocs(response) {
   `);
 }
 
+function validateOrderItems(rawItems) {
+  if (!Array.isArray(rawItems) || rawItems.length === 0) {
+    throw new HttpError(422, "Order must include at least one item");
+  }
+
+  return rawItems.map((item) => {
+    const sku = item?.sku;
+    const quantity = item?.quantity ?? 1;
+
+    if (!catalog[sku]) {
+      throw new HttpError(422, `Unknown SKU: ${sku}`);
+    }
+
+    if (typeof quantity !== "number" || !Number.isFinite(quantity) || quantity <= 0) {
+      throw new HttpError(422, "Quantity must be a positive number");
+    }
+
+    return {
+      sku,
+      quantity,
+    };
+  });
+}
+
 async function handleRequest(request, response) {
   const url = new URL(request.url, "http://localhost");
 
@@ -44,10 +68,7 @@ async function handleRequest(request, response) {
 
   if (request.method === "POST" && url.pathname === "/orders") {
     const payload = await readJson(request);
-    const items = (payload.items ?? []).map((item) => ({
-      sku: item.sku,
-      quantity: item.quantity ?? 1,
-    }));
+    const items = validateOrderItems(payload.items);
     const pricing = calculateOrderTotal(items, customer, payload.coupon);
 
     const orderId = `ord_${orders.size + 1}`;
@@ -71,7 +92,10 @@ async function handleRequest(request, response) {
     const order = orders.get(orderMatch[1]);
     if (!order) throw new HttpError(404, "Order not found");
 
-    // Access policy is part of the security review exercise.
+    if (customer.role !== "admin" && order.customerId !== customer.id) {
+      throw new HttpError(403, "Cannot access another customer's order");
+    }
+
     return sendJson(response, 200, order);
   }
 
@@ -80,8 +104,7 @@ async function handleRequest(request, response) {
     const order = orders.get(refundMatch[1]);
     if (!order) throw new HttpError(404, "Order not found");
 
-    // Authorization is part of the refund exercise.
-    // requireAdmin(customer);
+    requireAdmin(customer);
 
     const payload = await readJson(request);
     const amount = payload.amount || order.pricing.total;
@@ -93,8 +116,7 @@ async function handleRequest(request, response) {
   }
 
   if (request.method === "GET" && url.pathname === "/reports/revenue") {
-    // Report access is part of the security review exercise.
-    // requireAdmin(customer);
+    requireAdmin(customer);
     return sendJson(response, 200, revenueByCustomer(orders));
   }
 

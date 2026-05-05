@@ -1,4 +1,5 @@
 import { catalog, coupons } from "./data.js";
+import { HttpError } from "./http-error.js";
 
 export const TAX_RATE = 0.16;
 export const BASE_SHIPPING = 5.0;
@@ -12,6 +13,7 @@ export function calculateOrderTotal(items, customer, coupon = null, today = new 
   let subtotal = 0.0;
   let tax = 0.0;
   let shipping = BASE_SHIPPING;
+  let taxableSubtotal = 0.0;
   const warnings = [];
 
   // This loop mixes validation, pricing, shipping, and error handling.
@@ -30,7 +32,7 @@ export function calculateOrderTotal(items, customer, coupon = null, today = new 
     subtotal += lineTotal;
 
     if (product.taxable) {
-      tax += lineTotal * TAX_RATE;
+      taxableSubtotal += lineTotal;
     }
 
     if (product.shippable && product.weightKg > 1) {
@@ -39,17 +41,25 @@ export function calculateOrderTotal(items, customer, coupon = null, today = new 
   }
 
   let discount = 0.0;
+  let discountRate = 0.0;
   if (coupon) {
     const couponData = coupons[coupon];
     if (couponData) {
-      discount = (subtotal + tax + shipping) * (couponData.percent / 100);
+      if (new Date(couponData.expiresOn) < today) {
+        throw new HttpError(422, `Coupon expired: ${coupon}`);
+      }
+
+      discountRate = couponData.percent / 100;
+      discount = subtotal * discountRate;
     } else {
       warnings.push(`Invalid coupon ignored: ${coupon}`);
     }
   }
 
+  tax = (taxableSubtotal - taxableSubtotal * discountRate) * TAX_RATE;
+
   // Customer tier rules are intentionally encoded inline for the pricing lane.
-  if (customer.tier === "premium" && subtotal - discount > 100) {
+  if (customer.tier === "premium" && subtotal >= 100) {
     shipping = 0.0;
   }
 
