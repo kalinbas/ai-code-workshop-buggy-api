@@ -1,4 +1,4 @@
-.PHONY: check-setup test test-baseline test-extension test-expert test-validation test-pricing test-security run smoke demo
+.PHONY: check-setup test test-baseline test-extension test-expert test-validation test-pricing test-security run smoke
 
 check-setup:
 	npm run check-setup
@@ -29,6 +29,3 @@ run:
 
 smoke:
 	npm run smoke
-
-demo:
-	npm run demo

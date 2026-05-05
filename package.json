@@ -17,7 +17,6 @@
     "test:expert": "node --test --test-name-pattern=expert",
     "test:validation": "node --test tests/validation.test.js",
     "test:pricing": "node --test tests/pricing.test.js",
-    "test:security": "node --test tests/security.test.js",
-    "demo": "node examples/refactor-prompt-demo.js"
+    "test:security": "node --test tests/security.test.js"
   }
 }

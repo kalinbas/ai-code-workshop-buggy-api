@@ -109,7 +109,6 @@ npm run test:validation
 npm run test:pricing
 npm run test:security
 npm run smoke
-npm run demo
 ```
 
 The same commands are also available through `make` if you prefer it.
@@ -118,7 +117,5 @@ The same commands are also available through `make` if you prefer it.
 
 - `docs/01_task_cards.md`: exercise instructions
 - `docs/02_prompt_patterns.md`: prompts to try
-- `docs/prompt_journal_template.md`: worksheet for tracking prompts
 - `docs/ai_patch_review_lab.md`: checklist for reviewing AI output
 - `docs/workshop_rubric.md`: debrief rubric
-- `examples/refactor-prompt-demo.js`: small presentation demo
