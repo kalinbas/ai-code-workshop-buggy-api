@@ -92,7 +92,10 @@ async function handleRequest(request, response) {
     const order = orders.get(orderMatch[1]);
     if (!order) throw new HttpError(404, "Order not found");
 
-    // Access policy is part of the security review exercise.
+    if (customer.role !== "admin" && order.customerId !== customer.id) {
+      throw new HttpError(403, "Cannot access another customer's order");
+    }
+
     return sendJson(response, 200, order);
   }
 
@@ -101,8 +104,7 @@ async function handleRequest(request, response) {
     const order = orders.get(refundMatch[1]);
     if (!order) throw new HttpError(404, "Order not found");
 
-    // Authorization is part of the refund exercise.
-    // requireAdmin(customer);
+    requireAdmin(customer);
 
     const payload = await readJson(request);
     const amount = payload.amount || order.pricing.total;
@@ -114,8 +116,7 @@ async function handleRequest(request, response) {
   }
 
   if (request.method === "GET" && url.pathname === "/reports/revenue") {
-    // Report access is part of the security review exercise.
-    // requireAdmin(customer);
+    requireAdmin(customer);
     return sendJson(response, 200, revenueByCustomer(orders));
   }
 
