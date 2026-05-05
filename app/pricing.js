@@ -10,8 +10,9 @@ function roundMoney(value) {
 
 export function calculateOrderTotal(items, customer, coupon = null, today = new Date()) {
   let subtotal = 0.0;
-  let tax = 0.0;
-  let shipping = BASE_SHIPPING;
+  let taxableSubtotal = 0.0;
+  let shipping = 0.0;
+  let hasShippableItems = false;
   const warnings = [];
 
   // This loop mixes validation, pricing, shipping, and error handling.
@@ -30,29 +31,44 @@ export function calculateOrderTotal(items, customer, coupon = null, today = new 
     subtotal += lineTotal;
 
     if (product.taxable) {
-      tax += lineTotal * TAX_RATE;
+      taxableSubtotal += lineTotal;
     }
 
-    if (product.shippable && product.weightKg > 1) {
-      shipping += HEAVY_ITEM_SURCHARGE;
+    if (product.shippable) {
+      hasShippableItems = true;
+      if (product.weightKg > 1) {
+        shipping += HEAVY_ITEM_SURCHARGE;
+      }
     }
+  }
+
+  if (hasShippableItems) {
+    shipping += BASE_SHIPPING;
   }
 
   let discount = 0.0;
   if (coupon) {
     const couponData = coupons[coupon];
     if (couponData) {
-      discount = (subtotal + tax + shipping) * (couponData.percent / 100);
+      if (couponData.expiresOn < today.toISOString().slice(0, 10)) {
+        warnings.push(`Expired coupon ignored: ${coupon}`);
+      } else if (subtotal < couponData.minSubtotal) {
+        warnings.push(`Coupon minimum not met: ${coupon}`);
+      } else {
+        discount = subtotal * (couponData.percent / 100);
+      }
     } else {
       warnings.push(`Invalid coupon ignored: ${coupon}`);
     }
   }
 
   // Customer tier rules are intentionally encoded inline for the pricing lane.
-  if (customer.tier === "premium" && subtotal - discount > 100) {
+  if (customer.tier === "premium" && subtotal >= 100) {
     shipping = 0.0;
   }
 
+  const taxableDiscount = subtotal > 0 ? discount * (taxableSubtotal / subtotal) : 0.0;
+  const tax = (taxableSubtotal - taxableDiscount) * TAX_RATE;
   const total = subtotal + tax + shipping - discount;
 
   return {
