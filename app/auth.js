@@ -3,12 +3,17 @@ import { HttpError } from "./http-error.js";
 
 export function getCurrentCustomer(headers) {
   const authorization = headers.authorization;
-  if (!authorization) {
+  // Fix: require the auth header to be a plain string before parsing it.
+  if (typeof authorization !== "string" || authorization.length === 0) {
     throw new HttpError(401, "Missing Authorization header");
   }
 
-  // Compact parsing is a good target for the security exercise.
-  const token = authorization.replaceAll("Bearer", "").trim();
+  // Fix: parse the Bearer scheme strictly so malformed headers cannot become valid tokens.
+  const match = authorization.match(/^Bearer\s+([A-Za-z0-9_-]+)$/);
+  if (!match) {
+    throw new HttpError(401, "Malformed Authorization header");
+  }
+  const token = match[1];
   const customer = customersByToken[token];
   if (!customer) {
     throw new HttpError(403, "Invalid token");

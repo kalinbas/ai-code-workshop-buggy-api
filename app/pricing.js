@@ -1,4 +1,5 @@
 import { catalog, coupons } from "./data.js";
+import { HttpError } from "./http-error.js";
 
 export const TAX_RATE = 0.16;
 export const BASE_SHIPPING = 5.0;
@@ -10,7 +11,7 @@ function roundMoney(value) {
 
 export function calculateOrderTotal(items, customer, coupon = null, today = new Date()) {
   let subtotal = 0.0;
-  let tax = 0.0;
+  let taxableSubtotal = 0.0;
   let shipping = BASE_SHIPPING;
   const warnings = [];
 
@@ -30,7 +31,8 @@ export function calculateOrderTotal(items, customer, coupon = null, today = new 
     subtotal += lineTotal;
 
     if (product.taxable) {
-      tax += lineTotal * TAX_RATE;
+      // Fix: track taxable subtotal separately so discounts can reduce taxable amount.
+      taxableSubtotal += lineTotal;
     }
 
     if (product.shippable && product.weightKg > 1) {
@@ -41,18 +43,34 @@ export function calculateOrderTotal(items, customer, coupon = null, today = new 
   let discount = 0.0;
   if (coupon) {
     const couponData = coupons[coupon];
-    if (couponData) {
-      discount = (subtotal + tax + shipping) * (couponData.percent / 100);
-    } else {
-      warnings.push(`Invalid coupon ignored: ${coupon}`);
+    // Fix: reject unknown coupons instead of silently applying no discount.
+    if (!couponData) {
+      throw new HttpError(422, `Invalid coupon: ${coupon}`);
     }
+
+    // Fix: compare date-only values so coupons expire after their listed calendar day.
+    const todayDate = today.toISOString().slice(0, 10);
+    if (todayDate > couponData.expiresOn) {
+      throw new HttpError(422, `Expired coupon: ${coupon}`);
+    }
+
+    // Fix: enforce coupon minimum subtotal before calculating the discount.
+    if (subtotal < couponData.minSubtotal) {
+      throw new HttpError(422, `Coupon minimum subtotal not met: ${coupon}`);
+    }
+
+    // Fix: coupons discount subtotal only, not tax or shipping.
+    discount = subtotal * (couponData.percent / 100);
   }
 
-  // Customer tier rules are intentionally encoded inline for the pricing lane.
-  if (customer.tier === "premium" && subtotal - discount > 100) {
+  // Fix: premium free shipping uses subtotal >= 100 before discounts.
+  if (customer.tier === "premium" && subtotal >= 100) {
     shipping = 0.0;
   }
 
+  // Fix: allocate subtotal discount proportionally to taxable items before tax.
+  const taxableDiscount = subtotal > 0 ? discount * (taxableSubtotal / subtotal) : 0.0;
+  const tax = (taxableSubtotal - taxableDiscount) * TAX_RATE;
   const total = subtotal + tax + shipping - discount;
 
   return {

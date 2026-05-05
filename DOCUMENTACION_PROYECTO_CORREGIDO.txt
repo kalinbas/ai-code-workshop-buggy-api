@@ -1,0 +1,589 @@
+DOCUMENTACION DEL PROYECTO CORREGIDO
+AI Code Workshop: Broken Orders API
+
+Ruta del proyecto:
+C:\Cloude\ai-code-workshop-buggy-api-main
+
+Fecha de documentacion:
+2026-05-05
+
+
+1. RESUMEN DEL PROYECTO
+=======================
+
+Este proyecto es una API HTTP de pedidos creada con Node.js. El repositorio fue
+disenado originalmente como una API "rota" para un workshop de debugging asistido
+por IA. Su objetivo es practicar lectura de codigo, pruebas, diagnostico de bugs
+y correcciones pequenas guiadas por tests.
+
+La API simula una tienda sencilla con:
+
+- catalogo de productos;
+- clientes autenticados por token Bearer;
+- creacion de ordenes;
+- consulta de ordenes;
+- calculo de subtotal, impuestos, envio y descuentos;
+- reembolsos;
+- reporte de ingresos por cliente.
+
+El proyecto ya fue corregido en las areas principales del taller:
+
+- validacion de ordenes;
+- reglas de pricing;
+- autenticacion y autorizacion.
+
+
+2. TECNOLOGIA Y REQUISITOS
+==========================
+
+Tecnologia principal:
+
+- Node.js
+- Modulos nativos de Node.js
+- Node test runner: node:test
+
+No usa Express ni dependencias externas. Por eso no es necesario ejecutar
+"npm install".
+
+Requisitos:
+
+- Node.js 20 o superior
+- npm incluido con Node.js
+
+Version instalada durante la correccion:
+
+- Node.js v24.15.0
+- npm 11.12.1
+
+Para verificar desde CMD:
+
+cd C:\Cloude\ai-code-workshop-buggy-api-main
+node --version
+npm --version
+
+
+3. ESTRUCTURA DEL PROYECTO
+==========================
+
+app/
+  auth.js
+    Maneja autenticacion por token Bearer y validacion de rol admin.
+
+  data.js
+    Contiene catalogo, clientes de prueba, cupones, ordenes en memoria y audit log.
+
+  http-error.js
+    Define HttpError para responder errores HTTP controlados.
+
+  pricing.js
+    Calcula subtotal, impuestos, envio, descuentos y total de una orden.
+
+  reports.js
+    Genera el reporte de ingresos por cliente.
+
+  server.js
+    Define el servidor HTTP, las rutas, la validacion de ordenes y las reglas de
+    autorizacion.
+
+tests/
+  validation.test.js
+    Pruebas de validacion de ordenes.
+
+  pricing.test.js
+    Pruebas de reglas de precios, cupones, impuestos y envio premium.
+
+  security.test.js
+    Pruebas de autenticacion y autorizacion.
+
+  helpers.js
+    Utilidades para levantar el servidor en tests y hacer peticiones HTTP.
+
+docs/
+  01_task_cards.md
+    Tarjetas del taller con los ejercicios.
+
+  02_prompt_patterns.md
+    Ejemplos de prompts para trabajar con IA.
+
+  ai_patch_review_lab.md
+    Guia para revisar cambios sugeridos por IA.
+
+  workshop_rubric.md
+    Rubrica para el cierre del workshop.
+
+Archivos principales:
+
+- README.md: instrucciones originales del taller.
+- package.json: scripts de ejecucion y pruebas.
+- Makefile: comandos alternativos para usuarios que usen make.
+
+
+4. COMO EJECUTAR EL PROYECTO
+============================
+
+Desde CMD:
+
+cd C:\Cloude\ai-code-workshop-buggy-api-main
+node app\server.js
+
+La API queda disponible en:
+
+http://127.0.0.1:8000
+
+La documentacion HTML minima del servidor esta en:
+
+http://127.0.0.1:8000/docs
+
+Health check:
+
+http://127.0.0.1:8000/health
+
+
+5. TOKENS LOCALES DE PRUEBA
+===========================
+
+El proyecto usa tokens fijos definidos en app\data.js.
+
+Cliente standard:
+
+Authorization: Bearer user-token-1
+
+Cliente premium:
+
+Authorization: Bearer premium-token-1
+
+Administrador:
+
+Authorization: Bearer admin-token
+
+
+6. ENDPOINTS DISPONIBLES
+========================
+
+GET /health
+
+Devuelve el estado del servidor.
+
+Respuesta esperada:
+
+{
+  "status": "ok"
+}
+
+
+GET /docs
+
+Devuelve una pagina HTML sencilla con las rutas disponibles.
+
+
+POST /orders
+
+Crea una orden.
+
+Requiere header Authorization con un token Bearer valido.
+
+Ejemplo de body:
+
+{
+  "items": [
+    {
+      "sku": "BOOK-001",
+      "quantity": 2
+    }
+  ],
+  "coupon": "WELCOME10"
+}
+
+Respuesta:
+
+- datos de la orden;
+- cliente asociado;
+- items;
+- coupon;
+- pricing;
+- status.
+
+
+GET /orders/:id
+
+Consulta una orden por id.
+
+Regla corregida:
+
+- el cliente solo puede leer sus propias ordenes;
+- un admin puede leer cualquier orden.
+
+
+POST /orders/:id/refund
+
+Reembolsa una orden.
+
+Regla corregida:
+
+- solo un admin puede ejecutar refunds.
+
+
+GET /reports/revenue
+
+Devuelve ingresos agrupados por cliente.
+
+Regla corregida:
+
+- solo un admin puede consultar este reporte.
+
+
+7. COMO CORRER LAS PRUEBAS
+==========================
+
+Ejecutar todas las pruebas:
+
+cd C:\Cloude\ai-code-workshop-buggy-api-main
+npm test
+
+Ejecutar por area:
+
+npm run test:validation
+npm run test:pricing
+npm run test:security
+
+Alternativa directa con Node:
+
+node tests\validation.test.js
+node tests\pricing.test.js
+node tests\security.test.js
+
+Resultados esperados despues de la correccion:
+
+- validation.test.js: 5 pruebas pasan, 0 fallan.
+- pricing.test.js: 3 pruebas pasan, 0 fallan.
+- security.test.js: 4 pruebas pasan, 0 fallan.
+
+
+8. BUGS CORREGIDOS
+==================
+
+Se corrigieron 12 comportamientos defectuosos del taller.
+
+
+8.1 Validacion de ordenes
+-------------------------
+
+Archivo principal:
+
+app\server.js
+
+Bugs corregidos:
+
+1. Se aceptaban ordenes vacias.
+2. Se aceptaban SKUs desconocidos.
+3. Se aceptaban cantidades negativas.
+4. Se aceptaban cantidades como string, por ejemplo "2".
+
+Correccion:
+
+Se agrego la funcion validateOrderItems(payload), que valida la orden antes de
+calcular precios o guardar datos.
+
+Reglas actuales:
+
+- payload.items debe ser un array;
+- payload.items no puede estar vacio;
+- cada item debe ser un objeto;
+- cada item debe tener un sku string;
+- el sku debe existir en el catalogo;
+- quantity por defecto es 1 si no se envia;
+- quantity debe ser entero;
+- quantity debe ser mayor a 0.
+
+Si alguna regla falla, la API responde con error HTTP 422.
+
+Comentarios agregados en el codigo:
+
+- app\server.js, funcion validateOrderItems:
+  comentarios "Fix:" explican la validacion de lista vacia, SKU y cantidad.
+
+- app\server.js, ruta POST /orders:
+  comentario "Fix:" explica que la validacion se centraliza en la frontera HTTP.
+
+
+8.2 Pricing, impuestos, cupones y envio
+---------------------------------------
+
+Archivo principal:
+
+app\pricing.js
+
+Bugs corregidos:
+
+5. El cupon descontaba subtotal + tax + shipping.
+6. El impuesto se calculaba sin considerar el descuento.
+7. Los cupones expirados se aceptaban.
+8. El envio gratis premium usaba subtotal - discount > 100.
+
+Correccion:
+
+El calculo ahora separa:
+
+- subtotal total;
+- subtotal taxable;
+- descuento;
+- envio;
+- impuesto;
+- total.
+
+Reglas actuales:
+
+- el descuento de un cupon se aplica solo sobre el subtotal;
+- el descuento reduce la base taxable de manera proporcional;
+- un cupon desconocido genera error HTTP 422;
+- un cupon expirado genera error HTTP 422;
+- se respeta minSubtotal del cupon;
+- clientes premium tienen envio gratis cuando subtotal >= 100 antes de descuento.
+
+Comentarios agregados en el codigo:
+
+- app\pricing.js:
+  comentarios "Fix:" explican el subtotal taxable, validacion de cupones,
+  fecha de expiracion, minimo de subtotal, descuento sobre subtotal, envio premium
+  y calculo de impuesto despues del descuento.
+
+
+8.3 Seguridad y autorizacion
+----------------------------
+
+Archivos principales:
+
+app\auth.js
+app\server.js
+
+Bugs corregidos:
+
+9. Un header malformado como "BearerBearer user-token-1" podia autenticarse.
+10. Un cliente podia leer ordenes de otro cliente.
+11. Un cliente no admin podia consultar /reports/revenue.
+12. Un cliente no admin podia reembolsar ordenes.
+
+Correccion en autenticacion:
+
+En app\auth.js se cambio el parsing del header Authorization.
+
+Antes:
+
+- se usaba replaceAll("Bearer", "").trim();
+- esto podia convertir headers malformados en tokens validos.
+
+Ahora:
+
+- Authorization debe ser string;
+- debe cumplir el patron estricto Bearer <token>;
+- si el formato esta mal, responde 401;
+- si el token no existe, responde 403.
+
+Correccion en autorizacion:
+
+En app\server.js:
+
+- GET /orders/:id verifica si el usuario es dueno de la orden o admin;
+- POST /orders/:id/refund llama requireAdmin(customer);
+- GET /reports/revenue llama requireAdmin(customer).
+
+Comentarios agregados en el codigo:
+
+- app\auth.js:
+  comentarios "Fix:" explican validacion de tipo y parsing estricto Bearer.
+
+- app\server.js:
+  comentarios "Fix:" explican acceso por dueno/admin, refunds admin-only y reportes
+  admin-only.
+
+
+9. ARCHIVOS MODIFICADOS
+=======================
+
+app\auth.js
+
+Cambios:
+
+- validacion estricta del header Authorization;
+- rechazo de headers Bearer malformados;
+- extraccion segura del token.
+
+
+app\server.js
+
+Cambios:
+
+- importacion del catalogo para validar SKUs;
+- nueva funcion validateOrderItems(payload);
+- validacion antes de crear ordenes;
+- proteccion de lectura de ordenes por dueno o admin;
+- proteccion de refunds con requireAdmin;
+- proteccion de revenue reports con requireAdmin.
+
+
+app\pricing.js
+
+Cambios:
+
+- importacion de HttpError;
+- seguimiento de taxableSubtotal;
+- rechazo de cupones desconocidos;
+- rechazo de cupones expirados;
+- validacion de minSubtotal;
+- descuento aplicado solo a subtotal;
+- impuesto calculado despues del descuento;
+- envio gratis premium con subtotal >= 100 antes de descuento.
+
+
+10. COMANDOS DE VERIFICACION USADOS
+===================================
+
+Se verificaron las pruebas de forma directa:
+
+node tests\validation.test.js
+node tests\pricing.test.js
+node tests\security.test.js
+
+Resultados observados:
+
+- validation: todas las pruebas pasaron.
+- pricing: todas las pruebas pasaron.
+- security: todas las pruebas pasaron.
+
+Nota:
+
+Dentro del entorno sandbox de Codex, "npm test" puede fallar con "spawn EPERM"
+porque el runner completo de Node intenta crear procesos hijo. En una terminal
+normal de Windows, despues de instalar Node.js y abrir un CMD nuevo, "npm test"
+deberia funcionar.
+
+
+11. COMPORTAMIENTO FINAL ESPERADO
+=================================
+
+Despues de las correcciones:
+
+- una orden valida se crea correctamente;
+- una orden vacia se rechaza;
+- un SKU desconocido se rechaza;
+- una cantidad negativa se rechaza;
+- una cantidad string se rechaza;
+- los descuentos se calculan sobre subtotal;
+- el impuesto se calcula despues del descuento;
+- los cupones expirados se rechazan;
+- el envio premium se activa con subtotal >= 100;
+- los headers Bearer malformados se rechazan;
+- un cliente no puede leer ordenes de otro cliente;
+- solo admin puede ver revenue reports;
+- solo admin puede hacer refunds.
+
+
+12. EJEMPLOS MANUALES DE PRUEBA
+===============================
+
+Crear orden valida:
+
+POST http://127.0.0.1:8000/orders
+Authorization: Bearer user-token-1
+Content-Type: application/json
+
+{
+  "items": [
+    {
+      "sku": "BOOK-001",
+      "quantity": 2
+    }
+  ]
+}
+
+Resultado esperado:
+
+- HTTP 200;
+- subtotal 84.00;
+- tax 13.44;
+- shipping 5.00;
+- total 102.44.
+
+
+Probar orden vacia:
+
+POST http://127.0.0.1:8000/orders
+Authorization: Bearer user-token-1
+Content-Type: application/json
+
+{
+  "items": []
+}
+
+Resultado esperado:
+
+- HTTP 422.
+
+
+Probar cupon expirado:
+
+POST http://127.0.0.1:8000/orders
+Authorization: Bearer user-token-1
+Content-Type: application/json
+
+{
+  "coupon": "EXPIRED20",
+  "items": [
+    {
+      "sku": "BOOK-001",
+      "quantity": 1
+    }
+  ]
+}
+
+Resultado esperado:
+
+- HTTP 422.
+
+
+Probar header Bearer malformado:
+
+Authorization: BearerBearer user-token-1
+
+Resultado esperado:
+
+- HTTP 401.
+
+
+Probar reporte con cliente no admin:
+
+GET http://127.0.0.1:8000/reports/revenue
+Authorization: Bearer user-token-1
+
+Resultado esperado:
+
+- HTTP 403.
+
+
+Probar reporte con admin:
+
+GET http://127.0.0.1:8000/reports/revenue
+Authorization: Bearer admin-token
+
+Resultado esperado:
+
+- HTTP 200.
+
+
+13. CONCLUSION
+==============
+
+El proyecto quedo en un estado funcional para el workshop. Los bugs principales
+de validacion, pricing y seguridad fueron corregidos y documentados mediante
+comentarios en los archivos modificados.
+
+La suite relevante de pruebas confirma que los comportamientos esperados ahora
+funcionan:
+
+- validation;
+- pricing;
+- security.
+
+Para trabajar con el proyecto en una terminal normal de Windows, basta con tener
+Node.js instalado, abrir un CMD nuevo, ubicarse en la carpeta del proyecto y
+ejecutar los comandos de prueba indicados en este documento.

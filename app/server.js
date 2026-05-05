@@ -1,7 +1,7 @@
 import { createServer as createHttpServer } from "node:http";
 import { fileURLToPath } from "node:url";
 import { getCurrentCustomer, requireAdmin } from "./auth.js";
-import { auditLog, orders } from "./data.js";
+import { auditLog, catalog, orders } from "./data.js";
 import { HttpError } from "./http-error.js";
 import { calculateOrderTotal } from "./pricing.js";
 import { revenueByCustomer } from "./reports.js";
@@ -29,6 +29,31 @@ function sendDocs(response) {
   `);
 }
 
+function validateOrderItems(payload) {
+  // Fix: reject missing, non-array, and empty item lists before pricing runs.
+  if (!Array.isArray(payload.items) || payload.items.length === 0) {
+    throw new HttpError(422, "Order must include at least one item");
+  }
+
+  return payload.items.map((item) => {
+    // Fix: require each item to be an object with a known SKU.
+    if (!item || typeof item !== "object" || typeof item.sku !== "string" || !catalog[item.sku]) {
+      throw new HttpError(422, "Order contains an unknown SKU");
+    }
+
+    const quantity = item.quantity === undefined ? 1 : item.quantity;
+    // Fix: reject string, fractional, zero, and negative quantities.
+    if (!Number.isInteger(quantity) || quantity <= 0) {
+      throw new HttpError(422, "Quantity must be a positive integer");
+    }
+
+    return {
+      sku: item.sku,
+      quantity,
+    };
+  });
+}
+
 async function handleRequest(request, response) {
   const url = new URL(request.url, "http://localhost");
 
@@ -44,10 +69,8 @@ async function handleRequest(request, response) {
 
   if (request.method === "POST" && url.pathname === "/orders") {
     const payload = await readJson(request);
-    const items = (payload.items ?? []).map((item) => ({
-      sku: item.sku,
-      quantity: item.quantity ?? 1,
-    }));
+    // Fix: centralize order validation at the HTTP boundary before persisting anything.
+    const items = validateOrderItems(payload);
     const pricing = calculateOrderTotal(items, customer, payload.coupon);
 
     const orderId = `ord_${orders.size + 1}`;
@@ -71,7 +94,10 @@ async function handleRequest(request, response) {
     const order = orders.get(orderMatch[1]);
     if (!order) throw new HttpError(404, "Order not found");
 
-    // Access policy is part of the security review exercise.
+    // Fix: allow only the owner or an admin to read an order.
+    if (order.customerId !== customer.id && customer.role !== "admin") {
+      throw new HttpError(403, "Order access denied");
+    }
     return sendJson(response, 200, order);
   }
 
@@ -80,8 +106,8 @@ async function handleRequest(request, response) {
     const order = orders.get(refundMatch[1]);
     if (!order) throw new HttpError(404, "Order not found");
 
-    // Authorization is part of the refund exercise.
-    // requireAdmin(customer);
+    // Fix: refunds are admin-only operations.
+    requireAdmin(customer);
 
     const payload = await readJson(request);
     const amount = payload.amount || order.pricing.total;
@@ -93,8 +119,8 @@ async function handleRequest(request, response) {
   }
 
   if (request.method === "GET" && url.pathname === "/reports/revenue") {
-    // Report access is part of the security review exercise.
-    // requireAdmin(customer);
+    // Fix: revenue reports expose cross-customer data, so they require admin access.
+    requireAdmin(customer);
     return sendJson(response, 200, revenueByCustomer(orders));
   }
 
