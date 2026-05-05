@@ -1,7 +1,7 @@
 import { createServer as createHttpServer } from "node:http";
 import { fileURLToPath } from "node:url";
 import { getCurrentCustomer, requireAdmin } from "./auth.js";
-import { auditLog, orders } from "./data.js";
+import { auditLog, catalog, coupons, orders } from "./data.js";
 import { HttpError } from "./http-error.js";
 import { calculateOrderTotal } from "./pricing.js";
 import { revenueByCustomer } from "./reports.js";
@@ -29,6 +29,30 @@ function sendDocs(response) {
   `);
 }
 
+function validateOrderPayload(payload) {
+  if (!Array.isArray(payload.items) || payload.items.length === 0) {
+    throw new HttpError(422, "Order must include at least one item");
+  }
+
+  for (const item of payload.items) {
+    if (!item || !catalog[item.sku]) {
+      throw new HttpError(422, "Order contains an unknown SKU");
+    }
+
+    const quantity = item.quantity ?? 1;
+    if (typeof quantity !== "number" || !Number.isFinite(quantity) || quantity <= 0) {
+      throw new HttpError(422, "Item quantity must be a positive number");
+    }
+  }
+
+  if (payload.coupon) {
+    const coupon = coupons[payload.coupon];
+    if (!coupon || new Date(coupon.expiresOn) < new Date()) {
+      throw new HttpError(422, "Invalid coupon");
+    }
+  }
+}
+
 async function handleRequest(request, response) {
   const url = new URL(request.url, "http://localhost");
 
@@ -44,6 +68,7 @@ async function handleRequest(request, response) {
 
   if (request.method === "POST" && url.pathname === "/orders") {
     const payload = await readJson(request);
+    validateOrderPayload(payload);
     const items = (payload.items ?? []).map((item) => ({
       sku: item.sku,
       quantity: item.quantity ?? 1,
@@ -71,7 +96,10 @@ async function handleRequest(request, response) {
     const order = orders.get(orderMatch[1]);
     if (!order) throw new HttpError(404, "Order not found");
 
-    // Access policy is part of the security review exercise.
+    if (customer.role !== "admin" && order.customerId !== customer.id) {
+      throw new HttpError(403, "Order access denied");
+    }
+
     return sendJson(response, 200, order);
   }
 
@@ -80,11 +108,10 @@ async function handleRequest(request, response) {
     const order = orders.get(refundMatch[1]);
     if (!order) throw new HttpError(404, "Order not found");
 
-    // Authorization is part of the refund exercise.
-    // requireAdmin(customer);
+    requireAdmin(customer);
 
     const payload = await readJson(request);
-    const amount = payload.amount || order.pricing.total;
+    const amount = payload.amount ?? order.pricing.total;
     order.status = "refunded";
     order.refundAmount = amount;
     order.refundReason = payload.reason ?? null;
@@ -93,8 +120,7 @@ async function handleRequest(request, response) {
   }
 
   if (request.method === "GET" && url.pathname === "/reports/revenue") {
-    // Report access is part of the security review exercise.
-    // requireAdmin(customer);
+    requireAdmin(customer);
     return sendJson(response, 200, revenueByCustomer(orders));
   }
 
