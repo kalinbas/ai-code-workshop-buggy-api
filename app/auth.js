@@ -7,8 +7,12 @@ export function getCurrentCustomer(headers) {
     throw new HttpError(401, "Missing Authorization header");
   }
 
-  // Compact parsing is a good target for the security exercise.
-  const token = authorization.replaceAll("Bearer", "").trim();
+  const match = authorization.match(/^Bearer\s+(.+)$/);
+  if (!match) {
+    throw new HttpError(401, "Malformed Authorization header");
+  }
+
+  const token = match[1].trim();
   const customer = customersByToken[token];
   if (!customer) {
     throw new HttpError(403, "Invalid token");
